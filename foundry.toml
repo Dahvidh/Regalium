@@ -1,0 +1,19 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc_version = "0.8.26"
+optimizer = true
+optimizer_runs = 200
+fs_permissions = [{ access = "read", path = ".env" }]
+
+
+[rpc_endpoints]
+amoy = "https://quaint-morning-brook.matic-amoy.quiknode.pro/16e808e1ae04ab3a3556ced5295a976fbc2b04c9"
+
+
+[etherscan]
+polygonMumbai = { key = "${ETHERSCAN_API_KEY}" }
+
+
+# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
