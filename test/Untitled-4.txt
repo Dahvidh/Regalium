@@ -1,0 +1,54 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.26;
+
+import "forge-std/Test.sol";
+import "../src/RegaliumGameStore.sol";
+import "../src/mocks/MockRegaliumToken.sol"; 
+
+contract GameStoreTest is Test {
+    GameStore public store;
+    MockRegaliumToken public mockToken;
+    address public owner = address(this);
+    address public player = address(0xBEEF);
+
+    function setUp() public {
+        mockToken = new MockRegaliumToken();
+        store = new GameStore(address(mockToken));
+    }
+
+    function testInitialSetup() public view{
+        assertEq(address(store.token()), address(mockToken));
+        assertEq(store.owner(), owner);
+    }
+
+    function testOnlyOwnerCanRewardUser() public {
+        vm.prank(player);
+        vm.expectRevert("Not authorized");
+        store.rewardUser(player, 100e18);
+    }
+
+    function testRewardAndWithdrawFlow() public {
+        // Simulate the game server rewarding a player
+        vm.prank(owner);
+        store.rewardUser(player, 100e18);
+        assertEq(store.rewards(player), 100e18);
+
+        // Expect the correct event when player withdraws
+        vm.prank(player);
+        vm.expectEmit(true, true, true, true);
+        emit GameStore.RewardWithdrawn(player, 100e18);
+        store.withdraw();
+
+        // Reward should be cleared
+        assertEq(store.rewards(player), 0);
+    }
+
+    function testWithdrawFailsIfNoReward() public {
+        vm.prank(player);
+        vm.expectRevert("No rewards to withdraw");
+        store.withdraw();
+    }
+}
+
+
+gamestore test original

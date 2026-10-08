@@ -16,7 +16,7 @@ contract RegaliumAccessControlTest is Test {
         accessControl = new RegaliumAccessControl(owner);
     }
 
-    function testInitialRoles() public view{
+    function testInitialRoles() public view {
         assertTrue(accessControl.hasRole(accessControl.DEFAULT_ADMIN_ROLE(), owner));
         assertTrue(accessControl.hasRole(accessControl.ADMIN_ROLE(), owner));
     }
@@ -31,11 +31,9 @@ contract RegaliumAccessControlTest is Test {
     }
 
     function testGrantPlayerRoleRevertsIfNotAdmin() public {
-        vm.expectRevert(abi.encodeWithSelector(
-            AccessControlUnauthorizedAccount.selector,
-            player,
-            accessControl.ADMIN_ROLE()
-        ));
+        vm.expectRevert(
+            abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, player, accessControl.ADMIN_ROLE())
+        );
         vm.prank(player);
         accessControl.grantPlayerRole(player);
     }
