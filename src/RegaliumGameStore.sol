@@ -1,41 +1,103 @@
 // SPDX-License-Identifier: MIT
+
 pragma solidity ^0.8.26;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./interfaces/IRegaliumToken.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract GameStore {
-    IRegaliumToken public token;
-    address public owner;
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-    // Track how much each player can withdraw
+contract GameStore is Initializable, UUPSUpgradeable, OwnableUpgradeable {
+    using SafeERC20 for IERC20;
+
+    IERC20 public token;
+
     mapping(address => uint256) public rewards;
 
-    event RewardWithdrawn(address indexed user, uint256 amount); // ✅ New event
+    // -------------------------------------------------------------------------
+    // Reentrancy Guard
+    // -------------------------------------------------------------------------
 
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Not authorized");
+    uint256 private _reentrancyStatus;
+
+    uint256 private constant _NOT_ENTERED = 1;
+    uint256 private constant _ENTERED = 2;
+
+    modifier nonReentrant() {
+        require(_reentrancyStatus != _ENTERED, "ReentrancyGuard: reentrant call");
+
+        _reentrancyStatus = _ENTERED;
+
         _;
+
+        _reentrancyStatus = _NOT_ENTERED;
     }
 
-    constructor(address _token) {
-        token = IRegaliumToken(_token);
-        owner = msg.sender;
+    // -------------------------------------------------------------------------
+    // Events
+    // -------------------------------------------------------------------------
+
+    event RewardWithdrawn(address indexed user, uint256 amount);
+
+    // -------------------------------------------------------------------------
+    // Initializer
+    // -------------------------------------------------------------------------
+
+    function initialize(address _token, address initialOwner) public initializer {
+        require(_token != address(0), "Invalid token");
+
+        require(initialOwner != address(0), "Invalid owner");
+
+        __Ownable_init(initialOwner);
+
+        _reentrancyStatus = _NOT_ENTERED;
+
+        token = IERC20(_token);
     }
 
-    // Called by the game server to reward players
+    // -------------------------------------------------------------------------
+    // Reward Management
+    // -------------------------------------------------------------------------
+
     function rewardUser(address user, uint256 amount) external onlyOwner {
+        require(user != address(0), "Invalid user");
+
+        require(amount > 0, "Invalid amount");
+
         rewards[user] += amount;
     }
 
-    // Players can call this to withdraw their earned tokens
-    function withdraw() external {
+    // -------------------------------------------------------------------------
+    // Reward Withdrawal
+    // -------------------------------------------------------------------------
+
+    function withdraw() external nonReentrant {
         uint256 amount = rewards[msg.sender];
+
         require(amount > 0, "No rewards to withdraw");
 
-        rewards[msg.sender] = 0; // Prevent re-entrancy
-        require(token.transfer(msg.sender, amount), "Token transfer failed");
+        // Effects before interaction.
+        rewards[msg.sender] = 0;
 
-        emit RewardWithdrawn(msg.sender, amount); // ✅ Emit the event
+        // Interaction.
+        token.safeTransfer(msg.sender, amount);
+
+        emit RewardWithdrawn(msg.sender, amount);
+    }
+
+    // -------------------------------------------------------------------------
+    // UUPS Authorization
+    // -------------------------------------------------------------------------
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+
+    // -------------------------------------------------------------------------
+    // Implementation Constructor
+    // -------------------------------------------------------------------------
+
+    constructor() {
+        _disableInitializers();
     }
 }
