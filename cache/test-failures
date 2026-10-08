@@ -1,0 +1,1 @@
+{"version":1,"failures":[{"contract":"test/Presale.t.sol:PresaleUpgradeableTest","test":"testOwnerCanWithdrawPOL"},{"contract":"test/Regalium.t.sol:RegaliumTokenTest","test":"testPriceMaticInUsd"}]}
