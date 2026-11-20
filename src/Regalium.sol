@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "chainlink-brownie-contracts/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 contract RegaliumToken is ERC20, Ownable {
-    uint256 public constant MAX_SUPPLY = 50_000_000 * 10 ** 18;
+    uint256 public constant MAX_SUPPLY = 100_000_000 * 10 ** 18;
     uint256 public constant MATIC_TO_RGLM = 2; // 1 MATIC = 2 RGLM
 
     AggregatorV3Interface internal maticUsdPriceFeed;
