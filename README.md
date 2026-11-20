@@ -42,13 +42,13 @@ The owner configures both limits with `setRewardLimits(playerCap, globalCap)`, u
 
 The owner-only `rewardUser` function should only be called after the game backend verifies match results, eligibility, and anti-cheat checks. The contract does not independently verify gameplay or calculate USD values. The $5–$10/day target must be translated into RGLM by a trusted reward service using a documented price methodology; it is not a guaranteed payout.
 
-For an existing proxy upgrade, the new `outstandingLiabilityInitialized` flag defaults to false. Before enabling rewards, the owner must sum every player's existing `rewards(address)` balance off-chain and call `initializeOutstandingRewards(sum)` exactly once. The call reverts if the GameStore token balance cannot cover that legacy liability. Then configure non-zero limits with `setRewardLimits`. Existing storage declarations are preserved and the new state is appended. Review the storage layout and run the full Foundry upgrade tests before authorizing an upgrade.
+For an existing proxy upgrade, the new `outstandingLiabilityInitialized` flag defaults to false. Withdrawals and new reward assignments are blocked until migration is complete. Before enabling withdrawals or rewards, the owner must sum every player's existing `rewards(address)` balance off-chain and call `initializeOutstandingRewards(sum)` exactly once. The call reverts if the GameStore token balance cannot cover that legacy liability. Then configure non-zero limits with `setRewardLimits`. Existing storage declarations are preserved and the new state is appended. Review the storage layout and run the full Foundry upgrade tests before authorizing an upgrade.
 
 ## Player Reward Economics
 
 The GameStore receives a 40,000,000 RGLM reserve. A planning target of approximately $5–$10 per day for highly active, high-performing players is an economic objective, not a guaranteed on-chain payout. Actual RGLM amounts must be calculated from a defensible market-price source and a sustainable emissions budget. The GameStore owner currently assigns rewards; gameplay scoring, anti-cheat checks, daily limits, and the 1,000 / 5,000 / 10,000 daily-active-player simulations must be implemented and validated in the game/reward service before promising fixed daily earnings.
 
-The current GameStore contract does not itself enforce a daily USD value or a daily per-player cap. Do not advertise guaranteed dollar-denominated rewards until those controls and the price methodology have been implemented and independently tested.
+The current GameStore contract enforces configured per-player and global daily RGLM caps, but it does not enforce a daily USD value. Do not advertise guaranteed dollar-denominated rewards until the trusted reward service, price methodology, and emissions model have been implemented and independently tested.
 
 ## Contracts (src/)
 
