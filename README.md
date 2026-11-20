@@ -1,12 +1,12 @@
 # Regalium (RGLM)
 
-Regalium is an on-chain token ecosystem implemented in Solidity and built with Foundry. It includes an ERC20 token (`RegaliumToken`) plus supporting modules for presale, staking, buyback & burn, and a game reward store. The project is designed for deployment on EVM-compatible chains (example: Polygon/Matic).
+Regalium is an on-chain token ecosystem implemented in Solidity and built with Foundry. It includes an ERC20 token (`RegaliumToken`) plus supporting modules for presale, staking, buyback & burn, and a game reward store. The project is designed for deployment on EVM-compatible chains (example: Polygon).
 
 ## Key Features
 
 - Token: `RegaliumToken` (ERC20) with a fixed MAX_SUPPLY of 50,000,000 RGLM and a built-in Chainlink MATIC/USD price feed connector.
-- Presale: `Presale` contract accepts MATIC and distributes RGLM at a fixed rate (1 MATIC = 2 RGLM).
-- Staking: `Staking` contract allows users to stake RGLM and earn time-based rewards.
+- Presale: `Presale` accepts native chain currency (POL on Polygon; MATIC is the legacy name) and distributes RGLM at a fixed rate (1 POL = 2 RGLM).
+- Staking: `Staking` allows users to stake RGLM and earn time-based rewards.
 - Buyback & Burn: `Buyback` can collect tokens and burn them to reduce circulating supply.
 - GameStore: `GameStore` holds reward balances and lets players withdraw earned RGLM.
 - Access Control: `RegaliumAccessControl` defines `ADMIN_ROLE` and `PLAYER_ROLE` for role-based permissions.
@@ -14,46 +14,46 @@ Regalium is an on-chain token ecosystem implemented in Solidity and built with F
 ## Contracts (src/)
 
 - `Regalium.sol` — `RegaliumToken`: ERC20 token, `MAX_SUPPLY = 50_000_000 * 10**18`, Chainlink price feed integration, and helper price-view functions.
-- `RegaliumPresale.sol` — `Presale`: Accepts native chain currency (e.g., MATIC), sells RGLM at a fixed rate, owner can withdraw proceeds.
-- `RegaliumStaking.sol` — `Staking`: Stake RGLM, accumulate rewards at a configured per-second rate, claimable by stakers.
+- `RegaliumPresale.sol` — `Presale`: Accepts native chain currency, sells RGLM at a fixed rate, and lets the owner withdraw proceeds.
+- `RegaliumStaking.sol` — `Staking`: Stake RGLM and accumulate rewards at a configured per-second rate.
 - `RegaliumBuyback.sol` — `Buyback`: Receives tokens and burns them via `burnFrom` on the `IRegaliumToken` interface.
-- `RegaliumGameStore.sol` — `GameStore`: Tracks and distributes off-chain-earned rewards to players; includes `RewardWithdrawn` events.
-- `AccessControl.sol` — `RegaliumAccessControl`: Role-based access control using OpenZeppelin's `AccessControl`.
+- `RegaliumGameStore.sol` — `GameStore`: Tracks and distributes off-chain-earned rewards to players.
+- `AccessControl.sol` — `RegaliumAccessControl`: Role-based access control.
 - `interfaces/IRegaliumToken.sol` — Interface extending `IERC20` with `burnFrom`.
 
-See the `script/DeployAll.s.sol` script for a sample deployment flow that deploys the token and supporting contracts.
+See `script/DeployAll.s.sol` for the sample deployment flow.
 
 ## Project Structure
 
-- `src/` — Solidity contracts (token, modules, interfaces).
-- `script/` — Foundry deployment scripts (`DeployAll.s.sol`).
+- `src/` — Solidity contracts (token and modules).
+- `script/` — Foundry deployment scripts.
 - `test/` — Forge tests (unit and integration tests).
 - `mocks/` — Mock contracts used for testing.
-- `broadcast/` & `cache/` — Foundry output and build caches (auto-generated).
+- `broadcast/` and `cache/` — Foundry output and build caches (auto-generated).
 
 ## Quickstart (Development)
 
-Prerequisites: `foundry` (forge/cast/anvil) installed. See https://book.getfoundry.sh/ for setup.
+Prerequisites: Foundry (`forge`, `cast`, `anvil`) installed. See https://book.getfoundry.sh/ for setup.
 
-1. Build contracts:
+Build:
 
 ```bash
 forge build
 ```
 
-### Test
+Test:
 
 ```bash
 forge test
 ```
 
-3. Format code:
+Format:
 
 ```bash
 forge fmt
 ```
 
-4. Run a local node (Anvil) for manual testing:
+Run a local node:
 
 ```bash
 anvil
@@ -61,24 +61,28 @@ anvil
 
 ## Deployment
 
-Use the provided Foundry script `script/DeployAll.s.sol`. Set your deployer private key in the environment and run:
+The deployment script requires both a deployer key and an explicit presale inventory allocation. The allocation is entered as a whole-token RGLM amount, not wei.
 
 ```bash
-export PRIVATE_KEY=<your_key>
+export PRIVATE_KEY=<your_deployer_private_key>
+export PRESALE_ALLOCATION=<whole_RGLM_amount>
 forge script script/DeployAll.s.sol:DeployAll --rpc-url <RPC_URL> --broadcast
 ```
 
-`DeployAll` expects a Chainlink MATIC/USD price feed address; the sample script includes a placeholder address. Review and replace with the correct feed for your network.
+Choose the allocation deliberately as part of the token distribution plan. The script rejects a missing, zero, or above-supply allocation before broadcasting. After creating the presale proxy, it transfers the configured RGLM inventory from the deployer and verifies the proxy's token balance before reporting deployment complete.
+
+The script currently contains a sample Chainlink MATIC/USD feed address. **Do not deploy until that address has been independently confirmed for the target network.** The presale currently uses its fixed 1 POL = 2 RGLM rate; it does not dynamically read the Chainlink feed.
+
+Never paste or commit your private key into the repository. Use a secure environment or secret manager.
 
 ## Testing Notes
 
-- Tests are under `test/` and can be run with `forge test`.
-- Mocks for external integrations are in `mocks/`.
+Run `forge test` before deployment. The presale unit tests separately fund the presale mock token balance in `setUp()`; the deployment script now performs and verifies that funding on-chain.
 
 ## Security & Auditing
 
 - Contracts use OpenZeppelin primitives for ERC20 and access control patterns.
-- This repository is for development and experimentation; perform a formal audit before any production deployment.
+- This repository is for development and experimentation; obtain a formal audit before production deployment.
 
 ## Contributing
 
@@ -98,5 +102,3 @@ SPDX-License-Identifier: MIT
 - Buyback: [src/RegaliumBuyback.sol](src/RegaliumBuyback.sol)
 - GameStore: [src/RegaliumGameStore.sol](src/RegaliumGameStore.sol)
 - Access control: [src/AccessControl.sol](src/AccessControl.sol)
-
-If you want, I can also open a short CONTRIBUTING.md or add a deployment checklist.
