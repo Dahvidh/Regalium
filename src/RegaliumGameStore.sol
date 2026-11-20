@@ -109,6 +109,7 @@ contract GameStore is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     }
 
     function withdraw() external nonReentrant {
+        require(outstandingLiabilityInitialized, "Outstanding liabilities not initialized");
         uint256 amount = rewards[msg.sender];
         require(amount > 0, "No rewards to withdraw");
         rewards[msg.sender] = 0;
