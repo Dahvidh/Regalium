@@ -226,7 +226,7 @@ contract GameStoreUpgradeableTest is Test {
     }
 
     function testCannotAssignMoreThanAvailableReserve() public {
-        vm.expectRevert("Insufficient reward reserve");
+        vm.expectRevert("Insufficient uncommitted reward reserve");
         store.rewardUser(player, 1_000_001e18);
     }
 
@@ -234,5 +234,19 @@ contract GameStoreUpgradeableTest is Test {
         vm.prank(attacker);
         vm.expectRevert();
         store.setRewardLimits(100e18, 1_000e18);
+    }
+
+    function testOutstandingLiabilityTracksAssignmentsAndWithdrawals() public {
+        store.rewardUser(player, 250e18);
+        assertEq(store.totalOutstandingRewards(), 250e18);
+        vm.prank(player);
+        store.withdraw();
+        assertEq(store.totalOutstandingRewards(), 0);
+    }
+
+    function testNewAssignmentsCannotOvercommitReserve() public {
+        store.rewardUser(player, 900_000e18);
+        vm.expectRevert("Insufficient uncommitted reward reserve");
+        store.rewardUser(attacker, 200_000e18);
     }
 }
