@@ -76,6 +76,7 @@ contract GameStoreUpgradeableTest is Test {
 
         // Fund GameStore with RGLM.
         token.mint(address(store), 1_000_000e18);
+        store.setRewardLimits(1_000e18, 10_000e18);
     }
 
     function testInitializesCorrectly() public view {
@@ -196,5 +197,58 @@ contract GameStoreUpgradeableTest is Test {
         assertEq(token.balanceOf(player), beforeBalance + 500e18);
 
         assertEq(GameStore(address(store)).rewards(player), 0);
+    }
+
+    function testPlayerDailyCapIsEnforced() public {
+        store.rewardUser(player, 1_000e18);
+        vm.expectRevert("Daily player reward limit exceeded");
+        store.rewardUser(player, 1);
+    }
+
+    function testGlobalDailyCapIsEnforcedAcrossPlayers() public {
+        store.setRewardLimits(1_000e18, 1_000e18);
+        store.rewardUser(player, 1_000e18);
+        vm.expectRevert("Daily global reward limit exceeded");
+        store.rewardUser(attacker, 1);
+    }
+
+    function testDailyCapsResetOnNextDay() public {
+        store.rewardUser(player, 1_000e18);
+        vm.warp(block.timestamp + 1 days);
+        store.rewardUser(player, 1_000e18);
+        assertEq(store.rewards(player), 2_000e18);
+    }
+
+    function testCannotAssignRewardsWhenPaused() public {
+        store.setRewardLimits(0, 0);
+        vm.expectRevert("Rewarding is paused");
+        store.rewardUser(player, 1e18);
+    }
+
+    function testCannotAssignMoreThanAvailableReserve() public {
+        store.setRewardLimits(2_000_000e18, 2_000_000e18);
+        vm.expectRevert("Insufficient uncommitted reward reserve");
+        store.rewardUser(player, 1_000_001e18);
+    }
+
+    function testRewardLimitsAreOwnerOnly() public {
+        vm.prank(attacker);
+        vm.expectRevert();
+        store.setRewardLimits(100e18, 1_000e18);
+    }
+
+    function testOutstandingLiabilityTracksAssignmentsAndWithdrawals() public {
+        store.rewardUser(player, 250e18);
+        assertEq(store.totalOutstandingRewards(), 250e18);
+        vm.prank(player);
+        store.withdraw();
+        assertEq(store.totalOutstandingRewards(), 0);
+    }
+
+    function testNewAssignmentsCannotOvercommitReserve() public {
+        store.setRewardLimits(2_000_000e18, 2_000_000e18);
+        store.rewardUser(player, 900_000e18);
+        vm.expectRevert("Insufficient uncommitted reward reserve");
+        store.rewardUser(attacker, 200_000e18);
     }
 }

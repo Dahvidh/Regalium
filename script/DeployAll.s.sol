@@ -14,13 +14,13 @@ import {TeamVesting} from "src/TeamVesting.sol";
 
 contract DeployAll is Script {
     uint256 internal constant TOKEN_UNIT = 1e18;
-    uint256 internal constant MAX_SUPPLY = 50_000_000;
+    uint256 internal constant MAX_SUPPLY = 100_000_000;
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
 
-        // All allocations are configured as whole RGLM tokens.
+        // Preserve the approved 40% / 40% / 20% allocation ratio.
         uint256 teamAllocation = vm.envUint("TEAM_ALLOCATION");
         uint256 gameStoreAllocation = vm.envUint("GAMESTORE_ALLOCATION");
         uint256 presaleAllocation = vm.envUint("PRESALE_ALLOCATION");
@@ -34,6 +34,12 @@ contract DeployAll is Script {
             teamAllocation + gameStoreAllocation + presaleAllocation == MAX_SUPPLY,
             "Allocations must total MAX_SUPPLY"
         );
+        require(
+            teamAllocation == 40_000_000 &&
+                gameStoreAllocation == 40_000_000 &&
+                presaleAllocation == 20_000_000,
+            "Allocations must preserve 40/40/20 split"
+        );
 
         uint256 teamFunding = teamAllocation * TOKEN_UNIT;
         uint256 gameStoreFunding = gameStoreAllocation * TOKEN_UNIT;
@@ -44,7 +50,7 @@ contract DeployAll is Script {
         // Chainlink MATIC/USD feed. Verify for the target network before deployment.
         address maticUsdFeed = 0x565Ffe93b3b9EF5Ffc0e0e3ee2b6B7f43f31ff29;
 
-        // 1. Deploy the fixed-supply token. The deployer initially receives all 50m.
+        // 1. Deploy the fixed-supply token. The deployer initially receives all 100m.
         RegaliumToken regalium = new RegaliumToken(maticUsdFeed);
 
         // 2. Deploy GameStore implementation and proxy.
@@ -119,6 +125,7 @@ contract DeployAll is Script {
         console.log("Presale Proxy:", address(presale));
         console.log("Team Vesting Contract:", address(teamVesting));
         console.log("Team Beneficiary:", teamBeneficiary);
+        console.log("Total supply (RGLM):", MAX_SUPPLY);
         console.log("Team allocation (RGLM):", teamAllocation);
         console.log("GameStore allocation (RGLM):", gameStoreAllocation);
         console.log("Presale allocation (RGLM):", presaleAllocation);
