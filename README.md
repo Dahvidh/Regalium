@@ -38,11 +38,11 @@ The upgradeable GameStore now enforces two owner-configured limits on newly assi
 - A maximum RGLM amount per player per UTC day.
 - A maximum total RGLM amount across all players per UTC day.
 
-The owner configures both limits with `setRewardLimits(playerCap, globalCap)`, using 18-decimal token units. Setting either limit to zero pauses new reward assignments. Limits reset automatically at the next UTC day. Existing accrued player balances remain withdrawable and are not erased by a limit change.
+The owner configures both limits with `setRewardLimits(playerCap, globalCap)`, using 18-decimal token units. Setting either limit to zero pauses new reward assignments. Limits reset automatically at the next UTC day. Existing accrued player balances remain withdrawable and are not erased by a limit change. The contract also tracks total outstanding reward liabilities and only assigns a new reward when the token balance covers all outstanding liabilities plus the new assignment.
 
 The owner-only `rewardUser` function should only be called after the game backend verifies match results, eligibility, and anti-cheat checks. The contract does not independently verify gameplay or calculate USD values. The $5–$10/day target must be translated into RGLM by a trusted reward service using a documented price methodology; it is not a guaranteed payout.
 
-For an existing proxy upgrade, the owner must set non-zero limits after upgrading before new rewards can be assigned. Existing storage declarations are preserved and the new limit state is appended. Review the storage layout and run the full Foundry upgrade tests before authorizing an upgrade.
+For an existing proxy upgrade, the new `outstandingLiabilityInitialized` flag defaults to false. Before enabling rewards, the owner must sum every player's existing `rewards(address)` balance off-chain and call `initializeOutstandingRewards(sum)` exactly once. The call reverts if the GameStore token balance cannot cover that legacy liability. Then configure non-zero limits with `setRewardLimits`. Existing storage declarations are preserved and the new state is appended. Review the storage layout and run the full Foundry upgrade tests before authorizing an upgrade.
 
 ## Player Reward Economics
 
