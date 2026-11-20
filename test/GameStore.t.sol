@@ -245,6 +245,7 @@ contract GameStoreUpgradeableTest is Test {
     }
 
     function testNewAssignmentsCannotOvercommitReserve() public {
+        store.setRewardLimits(2_000_000e18, 2_000_000e18);
         store.rewardUser(player, 900_000e18);
         vm.expectRevert("Insufficient uncommitted reward reserve");
         store.rewardUser(attacker, 200_000e18);
