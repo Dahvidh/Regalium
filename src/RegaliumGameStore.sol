@@ -27,6 +27,8 @@ contract GameStore is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     uint256 public globalRewardDay;
     mapping(address => uint256) public playerRewardsAssignedToday;
     mapping(address => uint256) public playerRewardDay;
+    uint256 public totalOutstandingRewards;
+    bool public outstandingLiabilityInitialized;
 
     event RewardWithdrawn(address indexed user, uint256 amount);
     event RewardAssigned(address indexed user, uint256 amount, uint256 indexed day);
@@ -45,6 +47,16 @@ contract GameStore is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         __Ownable_init(initialOwner);
         _reentrancyStatus = _NOT_ENTERED;
         token = IERC20(_token);
+        outstandingLiabilityInitialized = true;
+    }
+
+    /// @notice One-time migration for an existing proxy: supply the sum of all users' accrued rewards.
+    /// The owner must calculate this from the pre-upgrade rewards mapping before enabling assignments.
+    function initializeOutstandingRewards(uint256 legacyOutstanding) external onlyOwner {
+        require(!outstandingLiabilityInitialized, "Liability already initialized");
+        require(token.balanceOf(address(this)) >= legacyOutstanding, "Legacy liabilities exceed reserve");
+        totalOutstandingRewards = legacyOutstanding;
+        outstandingLiabilityInitialized = true;
     }
 
     /// @notice Configure whole-day RGLM assignment limits (amounts use token's 18 decimals).
@@ -61,6 +73,7 @@ contract GameStore is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     function rewardUser(address user, uint256 amount) external onlyOwner {
         require(user != address(0), "Invalid user");
         require(amount > 0, "Invalid amount");
+        require(outstandingLiabilityInitialized, "Outstanding liabilities not initialized");
         require(dailyPlayerRewardCap > 0 && dailyGlobalRewardCap > 0, "Rewarding is paused");
 
         uint256 currentDay = block.timestamp / 1 days;
@@ -82,11 +95,15 @@ contract GameStore is Initializable, UUPSUpgradeable, OwnableUpgradeable {
             globalRewardsAssignedToday + amount <= dailyGlobalRewardCap,
             "Daily global reward limit exceeded"
         );
-        require(token.balanceOf(address(this)) >= amount, "Insufficient reward reserve");
+        require(
+            token.balanceOf(address(this)) >= totalOutstandingRewards + amount,
+            "Insufficient uncommitted reward reserve"
+        );
 
         playerRewardsAssignedToday[user] += amount;
         globalRewardsAssignedToday += amount;
         rewards[user] += amount;
+        totalOutstandingRewards += amount;
 
         emit RewardAssigned(user, amount, currentDay);
     }
@@ -95,6 +112,7 @@ contract GameStore is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         uint256 amount = rewards[msg.sender];
         require(amount > 0, "No rewards to withdraw");
         rewards[msg.sender] = 0;
+        totalOutstandingRewards -= amount;
         token.safeTransfer(msg.sender, amount);
         emit RewardWithdrawn(msg.sender, amount);
     }
