@@ -32,6 +32,18 @@ The deployment script requires the three configured allocations to sum to exactl
 
 The team beneficiary is supplied at deployment as `TEAM_BENEFICIARY`. Use a secure team multisig wallet where possible. The beneficiary address is fixed in the vesting contract and cannot be changed.
 
+## GameStore Daily Reward Controls
+
+The upgradeable GameStore now enforces two owner-configured limits on newly assigned rewards:
+- A maximum RGLM amount per player per UTC day.
+- A maximum total RGLM amount across all players per UTC day.
+
+The owner configures both limits with `setRewardLimits(playerCap, globalCap)`, using 18-decimal token units. Setting either limit to zero pauses new reward assignments. Limits reset automatically at the next UTC day. Existing accrued player balances remain withdrawable and are not erased by a limit change.
+
+The owner-only `rewardUser` function should only be called after the game backend verifies match results, eligibility, and anti-cheat checks. The contract does not independently verify gameplay or calculate USD values. The $5–$10/day target must be translated into RGLM by a trusted reward service using a documented price methodology; it is not a guaranteed payout.
+
+For an existing proxy upgrade, the owner must set non-zero limits after upgrading before new rewards can be assigned. Existing storage declarations are preserved and the new limit state is appended. Review the storage layout and run the full Foundry upgrade tests before authorizing an upgrade.
+
 ## Player Reward Economics
 
 The GameStore receives a 40,000,000 RGLM reserve. A planning target of approximately $5–$10 per day for highly active, high-performing players is an economic objective, not a guaranteed on-chain payout. Actual RGLM amounts must be calculated from a defensible market-price source and a sustainable emissions budget. The GameStore owner currently assigns rewards; gameplay scoring, anti-cheat checks, daily limits, and the 1,000 / 5,000 / 10,000 daily-active-player simulations must be implemented and validated in the game/reward service before promising fixed daily earnings.
@@ -42,7 +54,7 @@ The current GameStore contract does not itself enforce a daily USD value or a da
 
 - `Regalium.sol` — `RegaliumToken`: ERC20 token, fixed 100,000,000 RGLM supply, Chainlink price-feed integration, and helper price-view functions.
 - `RegaliumPresale.sol` — `Presale`: accepts native chain currency, sells RGLM at a fixed rate, and lets the owner withdraw proceeds.
-- `RegaliumGameStore.sol` — `GameStore`: tracks and distributes off-chain-earned rewards to players.
+- `RegaliumGameStore.sol` — `GameStore`: tracks and distributes off-chain-earned rewards with per-player and global daily RGLM assignment caps.
 - `TeamVesting.sol` — non-upgradeable team allocation vesting vault with a one-year cliff and four-year total schedule.
 - `RegaliumStaking.sol` — `Staking`: stake and reward functionality.
 - `RegaliumBuyback.sol` — `Buyback`: buyback and burn functionality.
